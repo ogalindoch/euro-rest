@@ -1,0 +1,15 @@
+{
+	"name"	: "euroglas/euro-rest",
+	"type"	: "library",
+	"description"	: "Servidor REST para EUROGLAS",
+	"keywords"	: ["server","rest","euroglas"],
+	"homepage":	"http://euroglas.net",
+	"license":	"MIT",
+	"authors": [
+		{
+			"name": "Octavio Galindo",
+			"email": "Octavio@euroglas.net",
+			"role": "Developer"
+		}
+	]
+}

@@ -13,5 +13,10 @@
     "require": {
 		"altorouter/altorouter": "^1.1.0",
         "emarref/jwt": "^1.0.3"
-    }
+    },
+	"autoload": {
+		"psr-4": {
+			"euroglas\\euro-rest": "src/"
+		}
+	}
 }

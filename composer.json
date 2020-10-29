@@ -13,5 +13,5 @@
     "require": {
 		"altorouter/altorouter": "^1.1.0",
         "emarref/jwt": "^1.0.3"
-    },
+    }
 }

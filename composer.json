@@ -5,11 +5,13 @@
 	"keywords"	: ["server","rest","euroglas"],
 	"homepage":	"http://euroglas.net",
 	"license":	"MIT",
-	"authors": [
-		{
+	"authors": [{
 			"name": "Octavio Galindo",
 			"email": "Octavio@euroglas.net",
 			"role": "Developer"
-		}
-	]
+	}],
+    "require": {
+		"altorouter/altorouter": "^1.1.0",
+        "emarref/jwt": "^1.0.3",
+    },
 }

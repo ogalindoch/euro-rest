@@ -5,7 +5,7 @@ namespace euroglas\eurorest;
 use altorouter\altorouter;
 use Emarref\Jwt;
 
-class RestServer 
+class restServer 
 {
     private $configPath;
     private $config;

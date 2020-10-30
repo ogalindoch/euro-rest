@@ -2,9 +2,6 @@
 
 namespace euroglas\eurorest;
 
-use altorouter\altorouter;
-use Emarref\Jwt;
-
 class restServer 
 {
     private $configPath;
@@ -26,7 +23,7 @@ class restServer
 
 
     function __construct($serverMode = "") {
-        print "In RestServer constructor\n";
+        //print "In RestServer constructor\n";
 
         //
         // Carga la configuración del servidor

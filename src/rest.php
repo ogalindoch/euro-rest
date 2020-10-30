@@ -1,6 +1,6 @@
 <?php
 
-namespace euroglas\euro-rest;
+namespace euroglas\eurorest;
 
 use altorouter\altorouter;
 use Emarref\Jwt;

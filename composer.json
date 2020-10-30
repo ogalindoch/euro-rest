@@ -16,7 +16,7 @@
     },
 	"autoload": {
 		"psr-4": {
-			"euroglas\\euro-rest\\": "src/"
+			"euroglas\\eurorest\\": "src/"
 		}
 	}
 }

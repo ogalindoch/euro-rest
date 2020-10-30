@@ -63,7 +63,7 @@ class restServer
 
     private function cargaModulos()
     {
-        $listaDeModulos = array_merge(array('core'=>1), $this->Config['Modulos']);
+        $listaDeModulos = array_merge(array('core'=>1), $this->config['Modulos']);
 
         foreach ($listaDeModulos as $modName => $isEnabled) {
             

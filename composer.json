@@ -1,5 +1,5 @@
 {
-	"name"	: "euroglas/euro-rest",
+	"name"	: "euroglas/eurorest",
 	"type"	: "library",
 	"description"	: "Servidor REST para EUROGLAS",
 	"keywords"	: ["server","rest","euroglas"],

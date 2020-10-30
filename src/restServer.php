@@ -23,7 +23,7 @@ class restServer
 
 
     function __construct($serverMode = "") {
-        //print "In RestServer constructor\n";
+        print "In RestServer constructor\n";
 
         //
         // Carga la configuración del servidor
@@ -40,12 +40,15 @@ class restServer
         //print("Cargando configuración desde {$this->configPath}".PHP_EOL);
         $this->config= parse_ini_file($this->configPath,true);
 
+        print("Configuración:\n");
+        print_r($this->config);
+
+        // Inicializa el ruteador
+        $this->router = new \AltoRouter();
+
         // Encabezados básicos
         header('Access-Control-Allow-Origin: *'); // CORS (Cross-Origin Resource Sharing) desde cualquier origen
         header('Access-Control-Expose-Headers: content-type, Authorization, ETag, If-None-Match'); // Algunos otros encabezados que necesitamos
-
-        // Inicializa el ruteador
-        $this->router = new AltoRouter();
 
     }
 

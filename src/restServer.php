@@ -8,6 +8,15 @@ class restServer
     private $config;
     private $router;
 
+    // Instancias de cada uno de los modulos
+    private $modulos = array();
+
+    // Permisos definidos por los modulos
+    private $permisos = array();
+
+    // Rutas definidas por los modulos
+    private $rutas = array();
+
     // Este es un arreglo que normalmente debería estar vacio.
     // se usa para agregar rutas que temporalmente no verifican autorizacion, posiblemente en desarrollo
     private $testSkipAuth = array(
@@ -85,8 +94,40 @@ class restServer
                     error_log("La clase {$modName} no implementa restModuleInterface, no la podemos usar.");
                 }
 
+                cargaPermisos( $modName, $modInstance );
+
+                cargaRutas( $modName, $modInstance );
+
+                // Guarda una referencia a la instancia del modulo
+                $this->modulos[$modName] = $modInstance;
+
                 print( $modInstance->name() . " : " . $modInstance->description()  );
             }
+        }
+
+        print_r($this->permisos);
+        print_r($this->rutas);
+    }
+
+    //
+    private function cargaPermisos( $modName, $modInstance )
+    {
+        if( $modInstance instanceof restModuleInterface )
+        {
+            $this->permisos[$modName] = $modInstance->permisos();
+        } else {
+            // No hay nada que hacer, el objeto no es del tipo esperado
+        }
+    }
+
+    //
+    private function cargaRutas( $modName, $modInstance )
+    {
+        if( $modInstance instanceof restModuleInterface )
+        {
+            $this->rutas[$modName] = $modInstance->rutas();
+        } else {
+            // No hay nada que hacer, el objeto no es del tipo esperado
         }
     }
 }

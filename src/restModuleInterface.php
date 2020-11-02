@@ -1,4 +1,5 @@
 <?php
+namespace euroglas\eurorest;
 
 interface restModuleInterface 
 {

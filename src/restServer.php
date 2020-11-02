@@ -76,7 +76,8 @@ class restServer
                 }
 
                 // Crea una instancia de la clase del modulo
-                $modInstance = new $modName();
+                $className = "\\euroglas\\eurorest\\" . $modName;
+                $modInstance = new $className();
 
                 // ok, sí existe, pero implementa la interfaz de modulos?
                 if( ($modInstance instanceof restModuleInterface) === false )

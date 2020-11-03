@@ -94,9 +94,9 @@ class restServer
                     error_log("La clase {$modName} no implementa restModuleInterface, no la podemos usar.");
                 }
 
-                cargaPermisos( $modName, $modInstance );
+                $this->cargaPermisos( $modName, $modInstance );
 
-                cargaRutas( $modName, $modInstance );
+                $this->cargaRutas( $modName, $modInstance );
 
                 // Guarda una referencia a la instancia del modulo
                 $this->modulos[$modName] = $modInstance;

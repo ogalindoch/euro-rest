@@ -58,10 +58,26 @@ class restServer
         print_r($this->config);
         print("</pre>\n");
 
+        $this->cargaModulos();
+
         // Inicializa el ruteador
         $this->router = new \AltoRouter();
 
-        $this->cargaModulos();
+        /// Define parametros que se pueden aceptar
+        {
+            //Se agrego que pueda aceptar Variables
+            $router->addMatchTypes(array('K' => '[_0-9A-Za-z]++'));
+
+            // Un SKU puede tener numeros, letras, puntos, guiones y espacios.
+            // El espacio podría estar URLEncoded, por eso el "%20"
+            $router->addMatchTypes(array('SKU' => '([A-Za-z0-9 \.\-]|%20)++'));
+        }
+
+        /// Mapea las URLs absolutamente básicas
+        {
+            $router->map( 'OPTIONS', '[**]', 'optionsCatchAll', 'optionsCatchAllNoSlash' );
+            $router->map( 'GET', '/', 'render_home', 'home' );
+        }
     }
 
     // Obten una copia de la configuracion (posiblemente para pasar a otros modulos)
@@ -129,5 +145,23 @@ class restServer
         } else {
             // No hay nada que hacer, el objeto no es del tipo esperado
         }
+    }
+
+    private function optionsCatchAll($blah=null)
+    {
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, DELETE, POST, PUT, PATCH, OPTIONS');
+        header('Access-Control-Allow-Headers: content-type, Authorization, ETag, If-None-Match');
+        header('Access-Control-Expose-Headers: content-type, Authorization, ETag, If-None-Match');
+        //header('Access-Control-Allow-Headers: authorization');
+        die($blah);
+    }
+
+    private function render_home() 
+    {
+        // Cuando estamos en modo de desarrollo, TODO se redirige a index.php, por lo que no podemos enviar al visitante a otra URL.
+        // En lugar de eso, vamos a ejecutar el otro archivo desde aquí.
+        include_once('./home/index.php');
+        die();
     }
 }

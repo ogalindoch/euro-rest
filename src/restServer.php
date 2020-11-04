@@ -50,7 +50,7 @@ class restServer
             $this->configPath = 'servidor.ini';
         }
 
-        print("Cargando configuración desde {$this->configPath}".PHP_EOL);
+        //print("Cargando configuración desde {$this->configPath}".PHP_EOL);
         $this->config= parse_ini_file($this->configPath,true);
 
         //print("Configuración:\n");
@@ -66,37 +66,37 @@ class restServer
         /// Define parametros que se pueden aceptar
         {
             //Se agrego que pueda aceptar Variables
-            $router->addMatchTypes(array('K' => '[_0-9A-Za-z]++'));
+            $this->router->addMatchTypes(array('K' => '[_0-9A-Za-z]++'));
 
             // Un SKU puede tener numeros, letras, puntos, guiones y espacios.
             // El espacio podría estar URLEncoded, por eso el "%20"
-            $router->addMatchTypes(array('SKU' => '([A-Za-z0-9 \.\-]|%20)++'));
+            $this->router->addMatchTypes(array('SKU' => '([A-Za-z0-9 \.\-]|%20)++'));
         }
 
         /// Mapea las URLs absolutamente básicas
         {
-            $router->map( 'OPTIONS', '[**]', 'optionsCatchAll', 'optionsCatchAllNoSlash' );
-            $router->map( 'GET', '/', 'render_home', 'home' );
+            $this->router->map( 'OPTIONS', '[**]', 'optionsCatchAll', 'optionsCatchAllNoSlash' );
+            $this->router->map( 'GET', '/', 'render_home', 'home' );
         }
 
         /// Mapea las rutas definidas por los modulos
         {
             foreach( $this->rutas as $modName => $modRutas )
             {
-                print("<div><h1>{$modName}</h1>\n");
-                foreach ($modRutas as $ruta => $metodo) {
-                    $callback = $modName . '|' . $metodo['callback'];
-                    print("<div><h1>{$ruta}</h1>\n");
+                foreach ($modRutas as $ruta => $metodos) {
+                    foreach ($metodos as $metodo => $values) {
+                        $callback = $modName . '|' . $values['callback'];
 
-                    print("<pre>\n");
-                    print_r($metodo);
-                    print("</pre>\n");
-
-                    print("</div>\n");
-                            
+                        $this->router->map( $metodo, $ruta, $callback, $values['callback'] );
+                    }
                 }
-                print("</div>\n");
             }
+
+            print("Rutas:\n");
+            print("<pre>\n");
+            print_r($this->router->getRoutes());
+            print("</pre>\n");
+
         }
     }
 

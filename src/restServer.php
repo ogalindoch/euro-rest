@@ -53,10 +53,10 @@ class restServer
         print("Cargando configuración desde {$this->configPath}".PHP_EOL);
         $this->config= parse_ini_file($this->configPath,true);
 
-        print("Configuración:\n");
-        print("<pre>\n");
-        print_r($this->config);
-        print("</pre>\n");
+        //print("Configuración:\n");
+        //print("<pre>\n");
+        //print_r($this->config);
+        //print("</pre>\n");
 
         $this->cargaModulos();
 
@@ -77,6 +77,26 @@ class restServer
         {
             $router->map( 'OPTIONS', '[**]', 'optionsCatchAll', 'optionsCatchAllNoSlash' );
             $router->map( 'GET', '/', 'render_home', 'home' );
+        }
+
+        /// Mapea las rutas definidas por los modulos
+        {
+            foreach( $this->rutas as $modName => $modRutas )
+            {
+                print("<div><h1>{$modName}</h1>\n");
+                foreach ($modRutas as $ruta => $metodo) {
+                    $callback = $modName . '|' . $metodo['callback'];
+                    print("<div><h1>{$ruta}</h1>\n");
+
+                    print("<pre>\n");
+                    print_r($metodo);
+                    print("</pre>\n");
+
+                    print("</div>\n");
+                            
+                }
+                print("</div>\n");
+            }
         }
     }
 

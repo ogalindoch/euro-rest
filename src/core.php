@@ -59,4 +59,10 @@ class core implements restModuleInterface
 
         return $items;
     }
+
+    public function ping()
+    {
+        return "pong";
+    }
+
 }

@@ -304,11 +304,6 @@ class restServer
         die();
     }
 
-    public function ping()
-    {
-        return "pong";
-    }
-
     private static $_Secreto = 'B63D8E6CDE343BFAECD4F2C9161C63CB'; // Guid generado al azar, por seguridad
 
 	private static function getEncription()

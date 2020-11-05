@@ -2,6 +2,8 @@
 
 namespace euroglas\eurorest;
 
+use Emarref\Jwt\Claim;
+
 class restServer 
 {
     private $configPath;
@@ -88,6 +90,12 @@ class restServer
                         $callback = $modName . '|' . $values['callback'];
 
                         $this->router->map( $metodo, $ruta, $callback, $values['callback'] );
+
+                        // Actualiza la lista de URLs que no requieren validacion
+                        if( $values['token_required'] == FALSE )
+                        {
+                            $this->realskipAuth[] = $value['name'];
+                        }
                     }
                 }
             }
@@ -98,6 +106,117 @@ class restServer
             print("</pre>\n");
 
         }
+    }
+
+    public function matchAndProcess()
+    {
+        $match = $this->router->match();
+        $skipAuth = array_merge($this->testSkipAuth,$this->realskipAuth);
+
+        if( is_array($match) ) // altoRouter regresa un arreglo, si se encontro una ruta coincidente
+        {
+            /*
+                array(3) { 
+                    ["target"]	=> modName|function 
+                    ["params"]	=> array(0) { } 
+                    ["name"] 	=> 'home' 
+                }
+            */
+
+            $callPieces = explode("|", $match["target"]);
+
+            // La instancia del modulo (se creo cuando se cargaron los modulos)
+            $modObj = $this->modulos[$callPieces[0]];
+
+            $callArray = array( $this->modulos[$callPieces[0]], $callPieces[1]); 
+
+            // intenta hacer la llamada
+            if( is_callable($callArray) )
+            {
+                if( in_array($match['name'], $skipAuth) )
+                {
+                    // Encontramos una ruta que omite Auth, no hay nada que hacer aquí
+                } else {
+                    //
+                    // La ruta requiere Auth
+                    //
+
+                    // Lista de headers
+                    //   en minusculas
+                    $headers = array_change_key_case(apache_request_headers());
+
+                    if( isset($headers['authorization']) )
+                    {
+                        if( stripos($headers['authorization'], 'Bearer') === false )
+                        {
+                            http_response_code(401); // 401 Unauthorized
+                            header('Access-Control-Allow-Origin: *');
+                            header('content-type: application/json');
+                            die(json_encode( array(
+                                'codigo' => 401100,
+                                'mensaje' => 'Solicitud invalida',
+                                'descripcion' => 'El header Authorization debe iniciar con "Bearer"',
+                                'detalles' => $headers['authorization']
+                            )));
+
+                        }
+
+                        list($serializedToken) = sscanf($headers['authorization'], "Bearer %s");
+            
+                        try {
+                            // Si la siguiente llamada no genera excepcion, 
+                            // el token se valido correctamente
+                            static::authFromJWT( $serializedToken );
+                        } catch (Exception $e) {
+                            $errCode = 401101;
+                            $errMsg = str_replace('"', '', $e->getMessage() );
+
+                            // Si expiro el token, usamos codigo 401102
+                            if( strpos($errMsg,'Token expired') !== false ) $errCode = 401102;
+
+                            http_response_code(401); // 401 Unauthorized
+                            header('Access-Control-Allow-Origin: *');
+                            header('content-type: application/json');
+                            die(json_encode( array(
+                                'codigo' => $errCode,
+                                'mensaje' => 'Token Error',
+                                'descripcion' => $errMsg,
+                                'detalles' => $serializedToken
+                            )));
+
+                        }
+                    }
+                    else
+                    {
+                        // Hace falta el header 'authorization', que debería traer el Token
+                        http_response_code(401); // 401 Unauthorized
+                        header('Access-Control-Allow-Origin: *');
+                        header('content-type: application/json');
+                        die(json_encode( array(
+                            'codigo' => 401001,
+                            'mensaje' => 'No autorizado',
+                            'descripcion' => 'La solicitud no contenia el Token requerido',
+                            'detalles' => $headers
+                        )));
+                    }            
+                }
+                // Termina validacion de auth, ahora si llamamos la funcion relacionada a la URL
+
+                call_user_func_array( $callArray, $match['params'] );
+
+
+            } else {
+                http_response_code(501); // 501: Not Implemented
+                die("El callback definido no parece ser ejecutable: ".$match['target']);
+            }
+
+        } else {
+            // no route was matched
+            http_response_code(404);
+
+            die("No se encontro una ruta para: ".$_SERVER['REQUEST_URI']);
+        }
+
     }
 
     // Obten una copia de la configuracion (posiblemente para pasar a otros modulos)
@@ -184,4 +303,133 @@ class restServer
         include_once('./home/index.php');
         die();
     }
+
+    private static $_Secreto = 'B63D8E6CDE343BFAECD4F2C9161C63CB'; // Guid generado al azar, por seguridad
+
+	private static function getEncription()
+	{
+		$algorithm = new Emarref\Jwt\Algorithm\Hs256(static::$_Secreto);
+		$encryption = Emarref\Jwt\Encryption\Factory::create($algorithm);
+
+		return $encryption;
+	}
+
+    private static function authFromJWT( $serializedToken )
+    {
+        $jwt = new Emarref\Jwt\Jwt();
+        $token = $jwt->deserialize($serializedToken);
+
+        // Este es el contexto con el que se va a validar el Token
+        $context = new Emarref\Jwt\Verification\Context( static::getEncription() );
+        $context->setIssuer($_SERVER["SERVER_NAME"]);
+		$context->setSubject('eurorest');
+		$options = array();
+
+        // Normalmente aqui usaría un try/catch,
+		// pero al final de nuevo lanzaría una excepcion.
+		// Mejor voy a dejar que la excepcion se propague.
+
+        $jwt->verify($token, $context);
+
+        $nombreClaim = $token->getPayload()->findClaimByName('Name');
+
+	    if($nombreClaim !== null)
+	    {
+	    	$UserName = $nombreClaim->getValue();
+	    	$User["username"] = $nombreClaim->getValue();
+	    }
+	    else
+	    {
+	    	$UserName = null;
+	    	$User = null;
+	    }
+
+	    $autoRenewClaim = $token->getPayload()->findClaimByName('Autorenew');
+	    if($autoRenewClaim !== null)
+	    {
+	    	$options["Autorenew"] = $autoRenewClaim->getValue();
+        }
+	    $renewTimeClaim = $token->getPayload()->findClaimByName('RTime');
+	    if($renewTimeClaim !== null)
+	    {
+	    	$options['RTime'] = $renewTimeClaim->getValue();
+        }
+        
+		$options['vrfy'] = null;
+	    $vrfyClaim = $token->getPayload()->findClaimByName('vrfy');
+	    if($vrfyClaim !== null)
+	    {
+	    	$options['vrfy'] = $vrfyClaim->getValue();
+	    	$vrfyClaimValue = $options['vrfy'];
+	    	switch ($vrfyClaimValue) {
+	    		case 'key':
+	    		case 'email':
+	    		case 'ldap':
+	    			// Omite las validaciones por ahora
+	    			break;
+
+	    		default:
+	    			http_response_code(401); // 401 Unauthorized
+	    			header('content-type: application/json');
+                    die(json_encode( array(
+                        'codigo' => 401111,
+                        'mensaje' => 'Vrfy Code Error',
+                        'descripcion' => "El codigo VRFY no es reconocido",
+                        'detalles' => $vrfyClaimValue
+                    )));
+	    			break;
+	    	}
+	    }
+
+		$uData = array();
+		$uData['vrfy'] = $options['vrfy'];
+		$uData['login'] = $nombreClaim->getValue();
+        static::$instance = new static($uData);
+
+	    // Autorenew debe ser el ultimo, ya que tengamos todo lo necesario en Options
+	    if( isset( $options["Autorenew"] ) && $options["Autorenew"] == true )
+	    {
+	    	$newToken = static::generaToken($nombreClaim->getValue(), $options);
+	    	//header("Access-Control-Expose-Headers","New-JWT-Token");
+	    	header("Authorization: {$newToken}");
+	    }
+    }
+
+	public static function generaToken($clientName=null, $options = array() )
+	{
+		$token = new Emarref\Jwt\Token();
+
+		if( ! empty( $options['RTime'] ) )
+		{
+			$token->addClaim(new Claim\Expiration(new \DateTime($options['RTime'])));
+		} else {
+			$expirationTime = '100 minutes';
+			//if(!empty($Config['usuarios']['JWT_Expiration']))
+			//{
+			//	$expirationTime = $Config['usuarios']['JWT_Expiration'];
+			//}
+			$token->addClaim(new Claim\Expiration(new \DateTime($expirationTime)));
+		}
+
+		$token->addClaim(new Claim\IssuedAt(new \DateTime('now')));
+		$token->addClaim(new Claim\Issuer($_SERVER["SERVER_NAME"]));
+		$token->addClaim(new Claim\JwtId(time()));
+		$token->addClaim(new Claim\NotBefore(new \DateTime('now')));
+		$token->addClaim(new Claim\Subject('Euroglas'));
+
+		//$token->addClaim(new Claim\PrivateClaim('ClientName', $clientName));
+		$token->addClaim(new Claim\PrivateClaim('Name', $clientName));
+
+		foreach ($options as $key => $value) {
+			if( $key == 'Expiration' ) continue; // ya checamos expiration arriba
+			$token->addClaim(new Claim\PrivateClaim($key, $value));
+		}
+
+		$encryption = static::getEncription();
+		$jwt = new Emarref\Jwt\Jwt();
+		$serializedToken = $jwt->serialize($token, $encryption);
+
+		return($serializedToken);
+	}
+
 }

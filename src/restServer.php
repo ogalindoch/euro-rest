@@ -89,7 +89,7 @@ class restServer
                     foreach ($metodos as $metodo => $values) {
                         $callback = $modName . '|' . $values['callback'];
 
-                        $this->router->map( $metodo, $ruta, $callback, $values['callback'] );
+                        $this->router->map( $metodo, $ruta, $callback, $values['name'] );
 
                         // Actualiza la lista de URLs que no requieren validacion
                         if( $values['token_required'] == FALSE )

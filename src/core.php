@@ -62,7 +62,7 @@ class core implements restModuleInterface
 
     public function ping()
     {
-        return "pong";
+        die( "pong" );
     }
 
 }

@@ -94,7 +94,7 @@ class restServer
                         // Actualiza la lista de URLs que no requieren validacion
                         if( $values['token_required'] == FALSE )
                         {
-                            $this->realskipAuth[] = $value['name'];
+                            $this->realskipAuth[] = $values['name'];
                         }
                     }
                 }
@@ -302,6 +302,11 @@ class restServer
         // En lugar de eso, vamos a ejecutar el otro archivo desde aquí.
         include_once('./home/index.php');
         die();
+    }
+
+    public function ping()
+    {
+        return "pong";
     }
 
     private static $_Secreto = 'B63D8E6CDE343BFAECD4F2C9161C63CB'; // Guid generado al azar, por seguridad

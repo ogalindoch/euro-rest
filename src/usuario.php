@@ -2,8 +2,11 @@
 
 namespace euroglas\eurorest;
 
-class core implements restModuleInterface
+use Emarref\Jwt\Claim;
+
+class usuario implements restModuleInterface,usuarioInterface
 {
+
     // Nombre oficial del modulo
     public function name() { return "Usuario"; }
 
@@ -38,6 +41,9 @@ class core implements restModuleInterface
         return $items;
     }
 
+    /**
+     * Genera un error si se trata de validar credenciales usando el metodo GET
+     */
     public function getValidaCredenciales()
     {
         http_response_code(405); // 405 Method Not Allowed
@@ -50,76 +56,107 @@ class core implements restModuleInterface
         )));
     }
 
+    /**
+     * Valida las credenciales recibidas
+     */
     public function postValidaCredenciales() 
     {
-        // Determina cómo vamos a autenticar al usuario:
-        // key - Usando una llave pre-definida (un GUID de cliente)
-        // usermail+password - Correo y contraseña
-        // username+password - Usuario y contraseña
-
-        if(isset($_REQUEST['key']))
-        {
-            // Validamos usando un LicenseKey
-            $key = $_REQUEST['key'];
-
-            $userName = null;
-
-            switch (trim($key)) {
-                case 'GYSTZ-U724P-TJB3W-BQ48R-6ZORU':
-                    $userName = 'Octavio Galindo';
-                    break;
-                case 'IRZAJ-IJL5B-Z1MGJ-RJSL8-O0BMA':
-                    $userName = 'TheRing';
-                    break;
-                case 'UGIWM-W7JEX-T6YBH-4WNLH-BGV7F':
-                    $userName = 'Kevin Torruco';
-                    break;
-                case 'IRZAJ-IJL5B-Z1MGJ-RJSL8-O0BMA':
-                    $userName = 'Vigilancia';
-                    break;
-                case 'JMWC0-70LXL-62RLC-7SNJD-G7XTR':
-                    $userName = 'EuroApiClient';
-                    break;
-                case '50KXS-8ER8P-C6CLJ-5RBJ0-ZU08O':
-                    $userName = 'Intranet';
-                    break;
-                case 'U1TOB-JDJHN-178YQ-EFPIT-NY89S':
-                    $userName = 'ClienteVIP';
-                    break;
-                case 'HIJ96-2NHZJ-SUFZJ-J4JS4-UBFWM-LOY5N':
-                    $userName = 'NO USAR';
-                    break;
-                case 'DE8VC-3413X-GESYY-F2B2C-HLWGR-ME7BQ':
-                    $userName = 'AUTOMATED TESTING';
-                    break;
-                default:
-                    $userName = false;
-                    break;
-            }
-            if( empty($userName) )
-            {
-                throw new ErrorException("Invalid Serial Key: [{$key}]");
-            }
-    
-            $uData = array();
-            $uData['login'] = $userName;
-            $uData['vrfy'] = 'key';
-    
-        
-        } elseif ( isset($_REQUEST['usermail']) && isset($_REQUEST['password']) ) {
-
-        } elseif ( isset($_REQUEST['username']) &&  isset($_REQUEST['password'])) {
-
-        } else {
+        try {
+            // Trata de autenticar al usuario usando los parametros recibidos
+            auth( $_REQUEST );
+        } catch (Exception $ex) {
             http_response_code(400); // 400 Bad Request
             header('Access-Control-Allow-Origin: *');
             header('content-type: application/json');
             die(json_encode( array(
                 'codigo' => 400,
-                'mensaje' => 'No se pudo validar su identidad',
-                'descripcion' => 'Insuficiente información para validar su identidad. ¿Olvidaste incluir el parametro key ó username/password ó usermail/password?',
+                'mensaje' => 'No se pudo validar su identidad, asegurate de enviar los parametros necesarios',
+                'descripcion' => $ex->getMessage(),
                 'detalles' => $_REQUEST
             )));
         }
     }
+
+    /**
+     * Implementacion default.
+     * 
+     * Permitimos acceso a todo mundo (útil para pruebas)
+     * 
+     * Nota, otras clases deben sobrecargar ésta función para usar otros metodos de autenticación.
+     * 
+     * @param array $args Arreglo con la información necesaria para autenticar al usuario.
+     * 
+     * @return string El token generado para el usuario
+     */
+    private function auth( $args = NULL )
+    {
+        $uData = array();
+        $uData['login'] = 'Autenticacion Sin Implementar';
+
+        die(generaToken( $uData ))
+    }
+
+    /**
+     * Define "El Secreto"
+     * 
+     * (Usado para la encriptacion del Token)
+     * 
+     * Necesita ser publico, para que pueda ser definido por el servidor que usa la clase
+     */
+    public function setSecret( $newSecret )
+    {
+        $_Secreto = $newSecret;
+    }
+    //private $_Secreto = '8C29B73D40DC05B7E5076AD18A338CC6'; // Secreto por default (generado aleatoriamente)
+    private $_Secreto = 'Mi Secreto'; // Para pruebas
+
+    /**
+     * Genera un JWT Token usando la información en Options
+     * 
+     * Opciones:
+     *      Expiration - DateTime que indica cuando expira el token.
+     *                   Ejemplo: $options['Expiration'] = new \DateTime('10 minutes');
+     * 
+     */
+    private function generaToken( $options = array() )
+    {
+        $token = new Emarref\Jwt\Token();
+
+        // Cuando se genera el Token
+        $token->addClaim(new Claim\IssuedAt(new \DateTime('now')));
+        // Valido a partir de (ahora mismo)
+        $token->addClaim(new Claim\NotBefore(new \DateTime('now')));
+        // Donde se expide
+        $token->addClaim(new Claim\Issuer($_SERVER["SERVER_NAME"]));
+        
+		$token->addClaim(new Claim\Subject('eurorest'));
+
+        //
+        // Expiración del token
+        //
+        if( !empty( $options['Expiration']))
+        {
+            $token->addClaim(new Claim\Expiration($options['Expiration']));
+        } else {
+            // Usa un valor default de 10 minutos
+            $token->addClaim(new Claim\Expiration(new \DateTime('10 minutes')));
+        }
+
+        // Agrega el resto de la información en las opciones
+        foreach ($options as $key => $value) {
+			if( $key == 'Expiration' ) continue; // ya checamos expiration arriba
+			$token->addClaim(new Claim\PrivateClaim($key, $value));
+        }
+        
+        // Prepara la encriptacion
+        $algorithm = new Emarref\Jwt\Algorithm\Hs256($this->_Secreto);
+		$encryption = Emarref\Jwt\Encryption\Factory::create($algorithm);
+
+		$jwt = new Emarref\Jwt\Jwt();
+		$serializedToken = $jwt->serialize($token, $encryption);
+
+		return($serializedToken);
+    }
+
+
 }

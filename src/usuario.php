@@ -93,7 +93,7 @@ class usuario implements restModuleInterface,usuarioInterface
         $uData = array();
         $uData['login'] = 'Autenticacion Sin Implementar';
 
-        die(generaToken( $uData ))
+        die(generaToken( $uData ));
     }
 
     /**

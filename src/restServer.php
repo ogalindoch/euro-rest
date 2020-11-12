@@ -125,10 +125,15 @@ class restServer
 
             $callPieces = explode("|", $match["target"]);
 
-            // La instancia del modulo (se creo cuando se cargaron los modulos)
-            $modObj = $this->modulos[$callPieces[0]];
+            if( count($callPieces) == 2 )
+            { 
+                // La instancia del modulo (se creo cuando se cargaron los modulos)
+                $modObj = $this->modulos[$callPieces[0]];
 
-            $callArray = array( $this->modulos[$callPieces[0]], $callPieces[1]); 
+                $callArray = array( $this->modulos[$callPieces[0]], $callPieces[1]); 
+            } else {
+                $callArray = array( $this, $match["target"] ) ;
+            }
 
             // intenta hacer la llamada
             if( is_callable($callArray) )
@@ -207,7 +212,7 @@ class restServer
 
             } else {
                 http_response_code(501); // 501: Not Implemented
-                die("El callback definido no parece ser ejecutable: ".$match['target']);
+                die("El callback definido no parece ser ejecutable: ".$match['target']."\n<br>". print_r($callArray,true) );
             }
 
         } else {
@@ -300,7 +305,7 @@ class restServer
     {
         // Cuando estamos en modo de desarrollo, TODO se redirige a index.php, por lo que no podemos enviar al visitante a otra URL.
         // En lugar de eso, vamos a ejecutar el otro archivo desde aquí.
-        include_once('./home/index.php');
+        include_once(__DIR__ . '/home/index.php');
         die();
     }
 

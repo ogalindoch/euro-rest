@@ -63,7 +63,7 @@ class usuario implements restModuleInterface,usuarioInterface
     {
         try {
             // Trata de autenticar al usuario usando los parametros recibidos
-            auth( $_REQUEST );
+            $this->auth( $_REQUEST );
         } catch (Exception $ex) {
             http_response_code(400); // 400 Bad Request
             header('Access-Control-Allow-Origin: *');
@@ -88,12 +88,12 @@ class usuario implements restModuleInterface,usuarioInterface
      * 
      * @return string El token generado para el usuario
      */
-    private function auth( $args = NULL )
+    public function auth( $args = NULL )
     {
         $uData = array();
         $uData['login'] = 'Autenticacion Sin Implementar';
 
-        die(generaToken( $uData ));
+        die($this->generaToken( $uData ));
     }
 
     /**
@@ -120,7 +120,7 @@ class usuario implements restModuleInterface,usuarioInterface
      */
     private function generaToken( $options = array() )
     {
-        $token = new Emarref\Jwt\Token();
+        $token = new \Emarref\Jwt\Token();
 
         // Cuando se genera el Token
         $token->addClaim(new Claim\IssuedAt(new \DateTime('now')));
@@ -149,10 +149,10 @@ class usuario implements restModuleInterface,usuarioInterface
         }
         
         // Prepara la encriptacion
-        $algorithm = new Emarref\Jwt\Algorithm\Hs256($this->_Secreto);
-		$encryption = Emarref\Jwt\Encryption\Factory::create($algorithm);
+        $algorithm = new \Emarref\Jwt\Algorithm\Hs256($this->_Secreto);
+		$encryption = \Emarref\Jwt\Encryption\Factory::create($algorithm);
 
-		$jwt = new Emarref\Jwt\Jwt();
+		$jwt = new \Emarref\Jwt\Jwt();
 		$serializedToken = $jwt->serialize($token, $encryption);
 
 		return($serializedToken);

@@ -76,7 +76,7 @@ class restServer
         //print_r($this->config);
         //print("</pre>\n");
 
-        error_log( print_r($this->config,true) );
+        // error_log( print_r($this->config,true) );
 
         if( !empty( $this->config['ModoDebug']) && $this->config['ModoDebug'] )
         {
@@ -301,14 +301,15 @@ class restServer
             
             if( $isEnabled )
             {
+                $className = "\\euroglas\\eurorest\\" . $modName;
+
                 // Valida que existe una clase con el nombre del modulo (en minusculas)
-                if( class_exists( $modName ) === false )
+                if( class_exists( $className ) === false )
                 {
                     error_log("No esta definida la clase {$modName}.");
                 }
 
                 // Crea una instancia de la clase del modulo
-                $className = "\\euroglas\\eurorest\\" . $modName;
                 $modInstance = new $className();
 
                 // ok, sí existe, pero implementa la interfaz de modulos?

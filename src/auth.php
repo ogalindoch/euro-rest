@@ -4,11 +4,11 @@ namespace euroglas\eurorest;
 
 use Emarref\Jwt\Claim;
 
-class usuario implements restModuleInterface , authInterface
+class auth implements restModuleInterface , authInterface
 {
 
     // Nombre oficial del modulo
-    public function name() { return "Usuario"; }
+    public function name() { return "auth"; }
 
     // Descripcion del modulo
     public function description() { return "Módulo usuarios"; }

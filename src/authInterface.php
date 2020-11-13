@@ -1,7 +1,7 @@
 <?php
 namespace euroglas\eurorest;
 
-interface usuarioInterface 
+interface authInterface 
 {
     /**
      * Autenticación del usuario 
@@ -12,6 +12,15 @@ interface usuarioInterface
      * @access public
      */
     function auth( $args = NULL );
+
+    /**
+     * Valida que el token recibido sea valido
+     * 
+     * @param string El token recibido
+     * 
+     * @return void Si la funcion se ejecuta exitosamente, el token era valido, de forma contraria, termina la solicitud.
+     */
+    function authFromJWT( $serializedToken );
     
     /**
      * Define "El Secreto"

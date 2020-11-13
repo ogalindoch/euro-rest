@@ -17,7 +17,7 @@ class restServer
     // Nombre de la API/Servidor
     private $ApiName;
 
-    // Objeto que maneja la autenticacion (debe implementar usuarioInterface)
+    // Objeto que maneja la autenticacion (debe implementar authInterface)
     private $authHandler;
 
     // Instancias de cada uno de los modulos
@@ -325,7 +325,7 @@ class restServer
                 $this->modulos[$modName] = $modInstance;
 
                 // Checa si es nuestro administrador de Autenticacion
-                if( $modInstance instanceof usuarioInterface )
+                if( $modInstance instanceof authInterface )
                 {
                     $this->authHandler = $modInstance;
                 }

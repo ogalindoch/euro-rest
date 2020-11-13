@@ -4,7 +4,7 @@ namespace euroglas\eurorest;
 
 use Emarref\Jwt\Claim;
 
-class usuario implements restModuleInterface , usuarioInterface
+class usuario implements restModuleInterface , authInterface
 {
 
     // Nombre oficial del modulo

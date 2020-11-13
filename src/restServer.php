@@ -6,9 +6,19 @@ use Emarref\Jwt\Claim;
 
 class restServer 
 {
-    private $configPath;
+    //private $configPath;
+
+    // Configuración del servidor
     private $config;
+
+    // Administrador de rutas (URLs)
     private $router;
+
+    // Nombre de la API/Servidor
+    private $ApiName;
+
+    // Objeto que maneja la autenticacion (debe implementar usuarioInterface)
+    private $authHandler;
 
     // Instancias de cada uno de los modulos
     private $modulos = array();
@@ -19,6 +29,8 @@ class restServer
     // Rutas definidas por los modulos
     private $rutas = array();
 
+    private $modoDebug = FALSE;
+
     // Este es un arreglo que normalmente debería estar vacio.
     // se usa para agregar rutas que temporalmente no verifican autorizacion, posiblemente en desarrollo
     private $testSkipAuth = array(
@@ -28,39 +40,69 @@ class restServer
     // (ojo, son los 'nombres' de las rutas, que se asignan en AltoRouter, no las rutas propiamente dicho)
     private $realskipAuth = array(
         'home', // Una pagina HTML a donde 'caemos' cuando no hay una ruta, es la ruta de inicio
-        //'optionsCatchAll',
-        'optionsCatchAllNoSlash',
+        'optionsCatchAllNoSlash', // necesaria para funcioamiento XORS
+        'PingPong', // Prueba basica para probar si estamos disponibles
+        'Estatus de depuracion', // Muestra el estatus del Modo Debug
     );
-
 
     function __construct($serverMode = "") {
         // Encabezados básicos (antes de enviar cualquier cosa, para evitar el error de que ya se había mandado algo)
         header('Access-Control-Allow-Origin: *'); // CORS (Cross-Origin Resource Sharing) desde cualquier origen
         header('Access-Control-Expose-Headers: content-type, Authorization, ETag, If-None-Match'); // Algunos otros encabezados que necesitamos
 
-        print "In RestServer constructor\n";
+        //print "In RestServer constructor\n";
+        $this->authHandler = NULL;
 
         //
         // Carga la configuración del servidor
-        $ApiName = '';
+        $this->ApiName = $serverMode;
         if( !empty($serverMode) )
         {
-            $this->configPath = "servidor.{$serverMode}.ini";
+            $configPath = "servidor.{$serverMode}.ini";
         }
         else
         {
-            $this->configPath = 'servidor.ini';
+            $configPath = 'servidor.ini';
         }
 
-        //print("Cargando configuración desde {$this->configPath}".PHP_EOL);
-        $this->config= parse_ini_file($this->configPath,true);
+        //print("Cargando configuración desde {$configPath}".PHP_EOL);
+        $this->config= parse_ini_file($configPath,true);
+
+        // Guarda el path en la configuración misma
+        $this->config['ConfigPath'] = $configPath;
 
         //print("Configuración:\n");
         //print("<pre>\n");
         //print_r($this->config);
         //print("</pre>\n");
 
+        error_log( print_r($this->config,true) );
+
+        if( !empty( $this->config['ModoDebug']) && $this->config['ModoDebug'] )
+        {
+            error_log( "Modo DEBUG activado" );
+            $this->modoDebug = TRUE;
+        }
+
+        if(!empty($this->config['ServerName']))
+        {
+            $this->ApiName = $this->config['ServerName'];
+        }
+
         $this->cargaModulos();
+
+        if( empty($this->authHandler) )
+        {
+            http_response_code(500); // 500 Internal Server Error
+            header('Access-Control-Allow-Origin: *');
+            header('content-type: application/json');
+            die(json_encode( array(
+                'codigo' => 500001,
+                'mensaje' => 'Servidor mal configurado',
+                'descripcion' => 'El servidor no tiene definido un Manejador de Autenticacion'
+            )));
+
+        }
 
         // Inicializa el ruteador
         $this->router = new \AltoRouter();
@@ -79,6 +121,24 @@ class restServer
         {
             $this->router->map( 'OPTIONS', '[**]', 'optionsCatchAll', 'optionsCatchAllNoSlash' );
             $this->router->map( 'GET', '/', 'render_home', 'home' );
+            $this->router->map( 'GET', '/ping', 'ping', 'PingPong');
+            $this->router->map( 'GET', '/debug', 'debugOn', 'Estatus de depuracion');
+
+            if( $this->modoDebug )
+            {
+                $this->router->map( 'GET', '/debug/modulos', 'showModulos', 'Lista de Modulos' );
+                $this->router->map( 'GET', '/debug/urls', 'showRutas', 'Lista de Rutas' );
+                $this->router->map( 'GET', '/debug/permisos', 'showPermisos', 'Lista de Permisos' );
+                $this->router->map( 'GET', '/debug/serverName', 'serverName', 'Nombre del Servidor' );
+                $this->router->map( 'GET', '/debug/config', 'showConfig', 'Muestra la configuracion' );
+
+                // Agrega las rutas debug, a la lista de rutas que NO requieren Token
+                $this->realskipAuth[] = 'Lista de Modulos';
+                $this->realskipAuth[] = 'Lista de Rutas';
+                $this->realskipAuth[] = 'Lista de Permisos';
+                $this->realskipAuth[] = 'Nombre del Servidor';
+                $this->realskipAuth[] = 'Muestra la configuracion';
+            }
         }
 
         /// Mapea las rutas definidas por los modulos
@@ -100,10 +160,10 @@ class restServer
                 }
             }
 
-            print("Rutas:\n");
-            print("<pre>\n");
-            print_r($this->router->getRoutes());
-            print("</pre>\n");
+            //print("Rutas:\n");
+            //print("<pre>\n");
+            //print_r($this->router->getRoutes());
+            //print("</pre>\n");
 
         }
     }
@@ -112,6 +172,8 @@ class restServer
     {
         $match = $this->router->match();
         $skipAuth = array_merge($this->testSkipAuth,$this->realskipAuth);
+
+        //print_r($skipAuth);
 
         if( is_array($match) ) // altoRouter regresa un arreglo, si se encontro una ruta coincidente
         {
@@ -171,7 +233,8 @@ class restServer
                         try {
                             // Si la siguiente llamada no genera excepcion, 
                             // el token se valido correctamente
-                            static::authFromJWT( $serializedToken );
+                            $this->authHandler->authFromJWT( $serializedToken );
+
                         } catch (Exception $e) {
                             $errCode = 401101;
                             $errMsg = str_replace('"', '', $e->getMessage() );
@@ -232,7 +295,7 @@ class restServer
 
     private function cargaModulos()
     {
-        $listaDeModulos = array_merge(array('core'=>1), $this->config['Modulos']);
+        $listaDeModulos = $this->config['Modulos'];
 
         foreach ($listaDeModulos as $modName => $isEnabled) {
             
@@ -261,12 +324,17 @@ class restServer
                 // Guarda una referencia a la instancia del modulo
                 $this->modulos[$modName] = $modInstance;
 
-                print( $modInstance->name() . " : " . $modInstance->description()  );
+                // Checa si es nuestro administrador de Autenticacion
+                if( $modInstance instanceof usuarioInterface )
+                {
+                    $this->authHandler = $modInstance;
+                }
+                //print( $modInstance->name() . " : " . $modInstance->description()  );
             }
         }
 
-        print_r($this->permisos);
-        print_r($this->rutas);
+        //print_r($this->permisos);
+        //print_r($this->rutas);
     }
 
     //
@@ -309,132 +377,32 @@ class restServer
         die();
     }
 
-    private static $_Secreto = 'B63D8E6CDE343BFAECD4F2C9161C63CB'; // Guid generado al azar, por seguridad
+    public function ping() { die( "pong" ); }
+    
+    public function showModulos() { 
+        $listaDeModulos = $this->config['Modulos'];
 
-	private static function getEncription()
-	{
-		$algorithm = new Emarref\Jwt\Algorithm\Hs256(static::$_Secreto);
-		$encryption = Emarref\Jwt\Encryption\Factory::create($algorithm);
-
-		return $encryption;
-	}
-
-    private static function authFromJWT( $serializedToken )
-    {
-        $jwt = new Emarref\Jwt\Jwt();
-        $token = $jwt->deserialize($serializedToken);
-
-        // Este es el contexto con el que se va a validar el Token
-        $context = new Emarref\Jwt\Verification\Context( static::getEncription() );
-        $context->setIssuer($_SERVER["SERVER_NAME"]);
-		$context->setSubject('eurorest');
-		$options = array();
-
-        // Normalmente aqui usaría un try/catch,
-		// pero al final de nuevo lanzaría una excepcion.
-		// Mejor voy a dejar que la excepcion se propague.
-
-        $jwt->verify($token, $context);
-
-        $nombreClaim = $token->getPayload()->findClaimByName('Name');
-
-	    if($nombreClaim !== null)
-	    {
-	    	$UserName = $nombreClaim->getValue();
-	    	$User["username"] = $nombreClaim->getValue();
-	    }
-	    else
-	    {
-	    	$UserName = null;
-	    	$User = null;
-	    }
-
-	    $autoRenewClaim = $token->getPayload()->findClaimByName('Autorenew');
-	    if($autoRenewClaim !== null)
-	    {
-	    	$options["Autorenew"] = $autoRenewClaim->getValue();
-        }
-	    $renewTimeClaim = $token->getPayload()->findClaimByName('RTime');
-	    if($renewTimeClaim !== null)
-	    {
-	    	$options['RTime'] = $renewTimeClaim->getValue();
-        }
-        
-		$options['vrfy'] = null;
-	    $vrfyClaim = $token->getPayload()->findClaimByName('vrfy');
-	    if($vrfyClaim !== null)
-	    {
-	    	$options['vrfy'] = $vrfyClaim->getValue();
-	    	$vrfyClaimValue = $options['vrfy'];
-	    	switch ($vrfyClaimValue) {
-	    		case 'key':
-	    		case 'email':
-	    		case 'ldap':
-	    			// Omite las validaciones por ahora
-	    			break;
-
-	    		default:
-	    			http_response_code(401); // 401 Unauthorized
-	    			header('content-type: application/json');
-                    die(json_encode( array(
-                        'codigo' => 401111,
-                        'mensaje' => 'Vrfy Code Error',
-                        'descripcion' => "El codigo VRFY no es reconocido",
-                        'detalles' => $vrfyClaimValue
-                    )));
-	    			break;
-	    	}
-	    }
-
-		$uData = array();
-		$uData['vrfy'] = $options['vrfy'];
-		$uData['login'] = $nombreClaim->getValue();
-        static::$instance = new static($uData);
-
-	    // Autorenew debe ser el ultimo, ya que tengamos todo lo necesario en Options
-	    if( isset( $options["Autorenew"] ) && $options["Autorenew"] == true )
-	    {
-	    	$newToken = static::generaToken($nombreClaim->getValue(), $options);
-	    	//header("Access-Control-Expose-Headers","New-JWT-Token");
-	    	header("Authorization: {$newToken}");
-	    }
+        header('content-type: application/json');
+        die( json_encode(array_keys($listaDeModulos),true) );
+    } 
+    public function showConfig() { 
+        header('content-type: application/json');
+        die( json_encode($this->config,true) ); 
     }
-
-	public static function generaToken($clientName=null, $options = array() )
-	{
-		$token = new Emarref\Jwt\Token();
-
-		if( ! empty( $options['RTime'] ) )
-		{
-			$token->addClaim(new Claim\Expiration(new \DateTime($options['RTime'])));
-		} else {
-			$expirationTime = '100 minutes';
-			//if(!empty($Config['usuarios']['JWT_Expiration']))
-			//{
-			//	$expirationTime = $Config['usuarios']['JWT_Expiration'];
-			//}
-			$token->addClaim(new Claim\Expiration(new \DateTime($expirationTime)));
-		}
-
-		$token->addClaim(new Claim\IssuedAt(new \DateTime('now')));
-		$token->addClaim(new Claim\Issuer($_SERVER["SERVER_NAME"]));
-		$token->addClaim(new Claim\JwtId(time()));
-		$token->addClaim(new Claim\NotBefore(new \DateTime('now')));
-		$token->addClaim(new Claim\Subject('Euroglas'));
-
-		//$token->addClaim(new Claim\PrivateClaim('ClientName', $clientName));
-		$token->addClaim(new Claim\PrivateClaim('Name', $clientName));
-
-		foreach ($options as $key => $value) {
-			if( $key == 'Expiration' ) continue; // ya checamos expiration arriba
-			$token->addClaim(new Claim\PrivateClaim($key, $value));
-		}
-
-		$encryption = static::getEncription();
-		$jwt = new Emarref\Jwt\Jwt();
-		$serializedToken = $jwt->serialize($token, $encryption);
-
-		return($serializedToken);
-	}
-
+    public function showRutas() { 
+        header('content-type: application/json');
+        die( json_encode( $this->router->getRoutes() ));
+    }
+    public function showPermisos() { 
+        header('content-type: application/json');
+        die( json_encode($this->permisos,true) ); 
+    }
+    public function debugOn() { 
+        if($this->modoDebug)
+        {die( "DepuracionActivada" ); }
+        else
+        {die( "DepuracionDesActivada" ); }
+        
+    }
+    public function showApiName() { die( $this->ApiName ); }
 }

@@ -4,7 +4,7 @@ namespace euroglas\eurorest;
 
 use Emarref\Jwt\Claim;
 
-class usuario implements restModuleInterface,usuarioInterface
+class usuario implements restModuleInterface , usuarioInterface
 {
 
     // Nombre oficial del modulo
@@ -36,6 +36,11 @@ class usuario implements restModuleInterface,usuarioInterface
             'name' => 'Valida las credenciales',
             'callback' => 'postValidaCredenciales',
             'token_required' => FALSE,
+        );
+        $items['/testoken']['GET'] = array(
+            'name' => 'Valida un token',
+            'callback' => 'testToken',
+            'token_required' => TRUE,
         );
 
         return $items;
@@ -158,5 +163,83 @@ class usuario implements restModuleInterface,usuarioInterface
 		return($serializedToken);
     }
 
+    public function authFromJWT( $serializedToken )
+    {
+        $jwt = new \Emarref\Jwt\Jwt();
+        $token = $jwt->deserialize($serializedToken);
 
+        // Prepara la encriptacion
+        $algorithm = new \Emarref\Jwt\Algorithm\Hs256($this->_Secreto);
+        $encryption = \Emarref\Jwt\Encryption\Factory::create($algorithm);
+        
+        // Este es el contexto con el que se va a validar el Token
+        $context = new \Emarref\Jwt\Verification\Context( $encryption );
+        $context->setIssuer($_SERVER["SERVER_NAME"]);
+		$context->setSubject('eurorest');
+		$options = array();
+
+        // Normalmente aqui usaría un try/catch,
+		// pero al final de nuevo lanzaría una excepcion.
+		// Mejor voy a dejar que la excepcion se propague.
+
+        $jwt->verify($token, $context);
+
+        // Lista los claims del token
+        //$jsonPayload = $token->getPayload()->getClaims()->jsonSerialize();
+        //print($jsonPayload);
+
+	    $autoRenewClaim = $token->getPayload()->findClaimByName('Autorenew');
+	    if($autoRenewClaim !== null)
+	    {
+	    	$options["Autorenew"] = $autoRenewClaim->getValue();
+        }
+        $options["Autorenew"] = true;
+
+	    $renewTimeClaim = $token->getPayload()->findClaimByName('RTime');
+	    if($renewTimeClaim !== null)
+	    {
+	    	$options['RTime'] = $renewTimeClaim->getValue();
+        }
+        
+		$options['vrfy'] = null;
+	    $vrfyClaim = $token->getPayload()->findClaimByName('vrfy');
+	    if($vrfyClaim !== null)
+	    {
+	    	$options['vrfy'] = $vrfyClaim->getValue();
+	    	$vrfyClaimValue = $options['vrfy'];
+	    	switch ($vrfyClaimValue) {
+	    		case 'key':
+	    		case 'email':
+	    		case 'ldap':
+	    			// Omite las validaciones por ahora
+	    			break;
+
+	    		default:
+	    			http_response_code(401); // 401 Unauthorized
+	    			header('content-type: application/json');
+                    die(json_encode( array(
+                        'codigo' => 401111,
+                        'mensaje' => 'Vrfy Code Error',
+                        'descripcion' => "El codigo VRFY no es reconocido",
+                        'detalles' => $vrfyClaimValue
+                    )));
+	    			break;
+	    	}
+	    }
+
+		$options['login'] = $token->getPayload()->findClaimByName('login');
+
+	    // Autorenew debe ser el ultimo, ya que tengamos todo lo necesario en Options
+	    if( isset( $options["Autorenew"] ) && $options["Autorenew"] == true )
+	    {
+	    	$newToken = $this->generaToken($options);
+	    	//header("Access-Control-Expose-Headers","New-JWT-Token");
+	    	header("Authorization: {$newToken}");
+	    }
+    }
+
+    public function testToken()
+    {
+        die("Token Tested");
+    }
 }

@@ -1,22 +1,3 @@
-<?php
-//
-// Carga la configuración del servidor
-$ApiName = '';
-if( !empty($_ENV['API_NAME']) )
-{
-	$ApiName = $_ENV['API_NAME'];
-	$ConfigPath = "servidor.{$ApiName}.ini";
-}
-else
-{
-	$ConfigPath = 'servidor.ini';
-}
-//print("Cargando configuración desde {$ConfigPath}".PHP_EOL);
-//$Config= parse_ini_file('..' .DIRECTORY_SEPARATOR. $ConfigPath,true);
-$Config= parse_ini_file($ConfigPath,true);
-
-
-?>
 <html>
 	<head>
 		<style>
@@ -129,7 +110,7 @@ $Config= parse_ini_file($ConfigPath,true);
 			</div>
 			<div>
 				<h1>Bienvenido a <?php echo $_SERVER['HTTP_HOST']; ?> <small><?php
-					echo empty($Config['ServerName'])?'':$Config['ServerName'];
+					echo $this->ApiName;
 				?></small></h1>
 				<h2>Un desarrollo de EUROGLAS&trade;</h2>
 			</div>

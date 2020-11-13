@@ -129,7 +129,7 @@ class restServer
                 $this->router->map( 'GET', '/debug/modulos', 'showModulos', 'Lista de Modulos' );
                 $this->router->map( 'GET', '/debug/urls', 'showRutas', 'Lista de Rutas' );
                 $this->router->map( 'GET', '/debug/permisos', 'showPermisos', 'Lista de Permisos' );
-                $this->router->map( 'GET', '/debug/serverName', 'serverName', 'Nombre del Servidor' );
+                $this->router->map( 'GET', '/debug/serverName', 'showApiName', 'Nombre del Servidor' );
                 $this->router->map( 'GET', '/debug/config', 'showConfig', 'Muestra la configuracion' );
 
                 // Agrega las rutas debug, a la lista de rutas que NO requieren Token

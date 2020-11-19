@@ -4,7 +4,7 @@ namespace euroglas\eurorest;
 
 use Emarref\Jwt\Claim;
 
-class auth implements restModuleInterface , authInterface
+abstract class auth implements restModuleInterface , authInterface
 {
 
     // Nombre oficial del modulo
@@ -69,7 +69,7 @@ class auth implements restModuleInterface , authInterface
         try {
             // Trata de autenticar al usuario usando los parametros recibidos
             $this->auth( $_REQUEST );
-        } catch (Exception $ex) {
+        } catch (\Exception $ex) {
             http_response_code(400); // 400 Bad Request
             header('Access-Control-Allow-Origin: *');
             header('content-type: application/json');
@@ -108,12 +108,12 @@ class auth implements restModuleInterface , authInterface
      * 
      * Necesita ser publico, para que pueda ser definido por el servidor que usa la clase
      */
-    public function setSecret( $newSecret )
+    public function SetSecret( $newSecret )
     {
-        $_Secreto = $newSecret;
+        $this->_Secreto = $newSecret;
     }
-    //private $_Secreto = '8C29B73D40DC05B7E5076AD18A338CC6'; // Secreto por default (generado aleatoriamente)
-    private $_Secreto = 'Mi Secreto'; // Para pruebas
+    protected $_Secreto = '8C29B73D40DC05B7E5076AD18A338CC6'; // Secreto por default (generado aleatoriamente)
+    //private $_Secreto = 'Mi Secreto'; // Para pruebas
 
     /**
      * Genera un JWT Token usando la información en Options
@@ -123,7 +123,7 @@ class auth implements restModuleInterface , authInterface
      *                   Ejemplo: $options['Expiration'] = new \DateTime('10 minutes');
      * 
      */
-    private function generaToken( $options = array() )
+    protected function generaToken( $options = array() )
     {
         $token = new \Emarref\Jwt\Token();
 

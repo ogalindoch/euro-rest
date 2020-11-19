@@ -131,6 +131,7 @@ class restServer
                 $this->router->map( 'GET', '/debug/permisos', 'showPermisos', 'Lista de Permisos' );
                 $this->router->map( 'GET', '/debug/serverName', 'showApiName', 'Nombre del Servidor' );
                 $this->router->map( 'GET', '/debug/config', 'showConfig', 'Muestra la configuracion' );
+                $this->router->map( 'GET', '/debug/authProvider', 'showAuthProvider', 'Nombre del modulo Auth');
 
                 // Agrega las rutas debug, a la lista de rutas que NO requieren Token
                 $this->realskipAuth[] = 'Lista de Modulos';
@@ -138,6 +139,8 @@ class restServer
                 $this->realskipAuth[] = 'Lista de Permisos';
                 $this->realskipAuth[] = 'Nombre del Servidor';
                 $this->realskipAuth[] = 'Muestra la configuracion';
+                $this->realskipAuth[] = 'Nombre del modulo Auth';
+
             }
         }
 
@@ -235,12 +238,16 @@ class restServer
                             // el token se valido correctamente
                             $this->authHandler->authFromJWT( $serializedToken );
 
-                        } catch (Exception $e) {
+                        } catch (\Exception $e) {
                             $errCode = 401101;
-                            $errMsg = str_replace('"', '', $e->getMessage() );
+                            $errMsg = "Token Error";
+                            $errDesc = str_replace('"', '', $e->getMessage() );
 
                             // Si expiro el token, usamos codigo 401102
-                            if( strpos($errMsg,'Token expired') !== false ) $errCode = 401102;
+                            if( strpos($errDesc,'Token expired') !== false )
+                            {
+                                $errCode = 401102;
+                            }
 
                             http_response_code(401); // 401 Unauthorized
                             header('Access-Control-Allow-Origin: *');
@@ -248,7 +255,7 @@ class restServer
                             die(json_encode( array(
                                 'codigo' => $errCode,
                                 'mensaje' => 'Token Error',
-                                'descripcion' => $errMsg,
+                                'descripcion' => $errDesc,
                                 'detalles' => $serializedToken
                             )));
 
@@ -293,6 +300,11 @@ class restServer
         return $this->config;
     }
 
+    public function SetSecret( $secret )
+    {
+        $this->authHandler->SetSecret($secret);
+    }
+
     private function cargaModulos()
     {
         $listaDeModulos = $this->config['Modulos'];
@@ -301,7 +313,7 @@ class restServer
             
             if( $isEnabled )
             {
-                $className = "\\euroglas\\eurorest\\" . $modName;
+                $className = "\\euroglas\\" . $modName . "\\" . $modName;
 
                 // Valida que existe una clase con el nombre del modulo (en minusculas)
                 if( class_exists( $className ) === false )
@@ -310,6 +322,7 @@ class restServer
                 }
 
                 // Crea una instancia de la clase del modulo
+                // print($className);
                 $modInstance = new $className();
 
                 // ok, sí existe, pero implementa la interfaz de modulos?
@@ -397,6 +410,9 @@ class restServer
     public function showPermisos() { 
         header('content-type: application/json');
         die( json_encode($this->permisos,true) ); 
+    }
+    public function showAuthProvider() {
+        die( $this->authHandler->name() );
     }
     public function debugOn() { 
         if($this->modoDebug)

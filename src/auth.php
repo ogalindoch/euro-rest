@@ -6,6 +6,8 @@ use Emarref\Jwt\Claim;
 
 abstract class auth implements restModuleInterface , authInterface
 {
+    // Implementa restModuleInterface
+    #region restModuleInterface
 
     // Nombre oficial del modulo
     public function name() { return "auth"; }
@@ -47,40 +49,39 @@ abstract class auth implements restModuleInterface , authInterface
     }
 
     /**
-     * Genera un error si se trata de validar credenciales usando el metodo GET
+     * Define que secciones de configuracion requiere
+     * 
+     * @return array Lista de secciones requeridas
      */
-    public function getValidaCredenciales()
+    public function requiereConfig()
     {
-        http_response_code(405); // 405 Method Not Allowed
-        header('Access-Control-Allow-Origin: *');
-        header('content-type: application/json');
-        die(json_encode( array(
-            'codigo' => 405,
-            'mensaje' => 'Metodo no permitido',
-            'descripcion' => "No puedes usar GET para validar credenciales. Prueba usando POST."
-        )));
+        $secciones = array();
+
+        // $secciones[] = 'miSeccion';
+
+        return $secciones;
     }
 
+    private $config = array();
+
     /**
-     * Valida las credenciales recibidas
+     * Carga UNA seccion de configuración
+     * 
+     * Esta función será llamada por cada seccion que indique "requiereConfig()"
+     * 
+     * @param string $sectionName Nombre de la sección de configuración
+     * @param array $config Arreglo con la configuracion que corresponde a la seccion indicada
+     * 
      */
-    public function postValidaCredenciales() 
+    public function cargaConfig($sectionName, $config)
     {
-        try {
-            // Trata de autenticar al usuario usando los parametros recibidos
-            $this->auth( $_REQUEST );
-        } catch (\Exception $ex) {
-            http_response_code(400); // 400 Bad Request
-            header('Access-Control-Allow-Origin: *');
-            header('content-type: application/json');
-            die(json_encode( array(
-                'codigo' => 400,
-                'mensaje' => 'No se pudo validar su identidad, asegurate de enviar los parametros necesarios',
-                'descripcion' => $ex->getMessage(),
-                'detalles' => $_REQUEST
-            )));
-        }
+        $this->config[$sectionName] = $config;
     }
+
+    #endregion restModuleInterface
+
+    // Implementa authInteface
+    #region authInterface
 
     /**
      * Implementacion default.
@@ -99,68 +100,6 @@ abstract class auth implements restModuleInterface , authInterface
         $uData['login'] = 'Autenticacion Sin Implementar';
 
         die($this->generaToken( $uData ));
-    }
-
-    /**
-     * Define "El Secreto"
-     * 
-     * (Usado para la encriptacion del Token)
-     * 
-     * Necesita ser publico, para que pueda ser definido por el servidor que usa la clase
-     */
-    public function SetSecret( $newSecret )
-    {
-        $this->_Secreto = $newSecret;
-    }
-    protected $_Secreto = '8C29B73D40DC05B7E5076AD18A338CC6'; // Secreto por default (generado aleatoriamente)
-    //private $_Secreto = 'Mi Secreto'; // Para pruebas
-
-    /**
-     * Genera un JWT Token usando la información en Options
-     * 
-     * Opciones:
-     *      Expiration - DateTime que indica cuando expira el token.
-     *                   Ejemplo: $options['Expiration'] = new \DateTime('10 minutes');
-     * 
-     */
-    protected function generaToken( $options = array() )
-    {
-        $token = new \Emarref\Jwt\Token();
-
-        // Cuando se genera el Token
-        $token->addClaim(new Claim\IssuedAt(new \DateTime('now')));
-        // Valido a partir de (ahora mismo)
-        $token->addClaim(new Claim\NotBefore(new \DateTime('now')));
-        // Donde se expide
-        $token->addClaim(new Claim\Issuer($_SERVER["SERVER_NAME"]));
-        
-		$token->addClaim(new Claim\Subject('eurorest'));
-
-        //
-        // Expiración del token
-        //
-        if( !empty( $options['Expiration']))
-        {
-            $token->addClaim(new Claim\Expiration($options['Expiration']));
-        } else {
-            // Usa un valor default de 10 minutos
-            $token->addClaim(new Claim\Expiration(new \DateTime('10 minutes')));
-        }
-
-        // Agrega el resto de la información en las opciones
-        foreach ($options as $key => $value) {
-			if( $key == 'Expiration' ) continue; // ya checamos expiration arriba
-			$token->addClaim(new Claim\PrivateClaim($key, $value));
-        }
-        
-        // Prepara la encriptacion
-        $algorithm = new \Emarref\Jwt\Algorithm\Hs256($this->_Secreto);
-		$encryption = \Emarref\Jwt\Encryption\Factory::create($algorithm);
-
-		$jwt = new \Emarref\Jwt\Jwt();
-		$serializedToken = $jwt->serialize($token, $encryption);
-
-		return($serializedToken);
     }
 
     public function authFromJWT( $serializedToken )
@@ -237,6 +176,109 @@ abstract class auth implements restModuleInterface , authInterface
 	    	header("Authorization: {$newToken}");
 	    }
     }
+
+    /**
+     * Define "El Secreto"
+     * 
+     * (Usado para la encriptacion del Token)
+     * 
+     * Necesita ser publico, para que pueda ser definido por el servidor que usa la clase
+     */
+    public function SetSecret( $newSecret )
+    {
+        $this->_Secreto = $newSecret;
+    }
+    protected $_Secreto = '8C29B73D40DC05B7E5076AD18A338CC6'; // Secreto por default (generado aleatoriamente)
+    //private $_Secreto = 'Mi Secreto'; // Para pruebas
+
+    #endregion authInterface
+
+    /**
+     * Genera un error si se trata de validar credenciales usando el metodo GET
+     */
+    public function getValidaCredenciales()
+    {
+        http_response_code(405); // 405 Method Not Allowed
+        header('Access-Control-Allow-Origin: *');
+        header('content-type: application/json');
+        die(json_encode( array(
+            'codigo' => 405,
+            'mensaje' => 'Metodo no permitido',
+            'descripcion' => "No puedes usar GET para validar credenciales. Prueba usando POST."
+        )));
+    }
+
+    /**
+     * Valida las credenciales recibidas
+     */
+    public function postValidaCredenciales() 
+    {
+        try {
+            // Trata de autenticar al usuario usando los parametros recibidos
+            $this->auth( $_REQUEST );
+        } catch (\Exception $ex) {
+            http_response_code(400); // 400 Bad Request
+            header('Access-Control-Allow-Origin: *');
+            header('content-type: application/json');
+            die(json_encode( array(
+                'codigo' => 400,
+                'mensaje' => 'No se pudo validar su identidad, asegurate de enviar los parametros necesarios',
+                'descripcion' => $ex->getMessage(),
+                'detalles' => $_REQUEST
+            )));
+        }
+    }
+
+
+
+    /**
+     * Genera un JWT Token usando la información en Options
+     * 
+     * Opciones:
+     *      Expiration - DateTime que indica cuando expira el token.
+     *                   Ejemplo: $options['Expiration'] = new \DateTime('10 minutes');
+     * 
+     */
+    protected function generaToken( $options = array() )
+    {
+        $token = new \Emarref\Jwt\Token();
+
+        // Cuando se genera el Token
+        $token->addClaim(new Claim\IssuedAt(new \DateTime('now')));
+        // Valido a partir de (ahora mismo)
+        $token->addClaim(new Claim\NotBefore(new \DateTime('now')));
+        // Donde se expide
+        $token->addClaim(new Claim\Issuer($_SERVER["SERVER_NAME"]));
+        
+		$token->addClaim(new Claim\Subject('eurorest'));
+
+        //
+        // Expiración del token
+        //
+        if( !empty( $options['Expiration']))
+        {
+            $token->addClaim(new Claim\Expiration($options['Expiration']));
+        } else {
+            // Usa un valor default de 10 minutos
+            $token->addClaim(new Claim\Expiration(new \DateTime('10 minutes')));
+        }
+
+        // Agrega el resto de la información en las opciones
+        foreach ($options as $key => $value) {
+			if( $key == 'Expiration' ) continue; // ya checamos expiration arriba
+			$token->addClaim(new Claim\PrivateClaim($key, $value));
+        }
+        
+        // Prepara la encriptacion
+        $algorithm = new \Emarref\Jwt\Algorithm\Hs256($this->_Secreto);
+		$encryption = \Emarref\Jwt\Encryption\Factory::create($algorithm);
+
+		$jwt = new \Emarref\Jwt\Jwt();
+		$serializedToken = $jwt->serialize($token, $encryption);
+
+		return($serializedToken);
+    }
+
 
     public function testToken()
     {

@@ -328,12 +328,17 @@ class restServer
                 // ok, sí existe, pero implementa la interfaz de modulos?
                 if( ($modInstance instanceof restModuleInterface) === false )
                 {
-                    error_log("La clase {$modName} no implementa restModuleInterface, no la podemos usar.");
+                    throw new Exception("La clase {$modName} no implementa restModuleInterface, no la podemos usar.");
                 }
 
+                // Carga los permisos del modulo
                 $this->cargaPermisos( $modName, $modInstance );
 
+                // Carga las rutas del modulo
                 $this->cargaRutas( $modName, $modInstance );
+
+                // envía la(s) seccion(es) de configuracion del modulo
+                $this->distribuyeConfig( $modName, $modInstance );
 
                 // Guarda una referencia a la instancia del modulo
                 $this->modulos[$modName] = $modInstance;
@@ -368,6 +373,26 @@ class restServer
         if( $modInstance instanceof restModuleInterface )
         {
             $this->rutas[$modName] = $modInstance->rutas();
+        } else {
+            // No hay nada que hacer, el objeto no es del tipo esperado
+        }
+    }
+
+    private function distribuyeConfig( $modName, $modInstance )
+    {
+        if( $modInstance instanceof restModuleInterface )
+        {
+            // Lista de secciones de config requeridas:
+            $seccionesRequeridas = $modInstance->requiereConfig();
+
+            foreach ($seccionesRequeridas as $nombreDeSeccion) {
+                if( isset( $this->config[$nombreDeSeccion]))
+                {
+                    $modInstance->cargaConfig($nombreDeSeccion, $this->config[$nombreDeSeccion] );
+                } else {
+                    throw new Exception("La seccion de configuración [{$nombreDeSeccion}] no existe");
+                }
+            }
         } else {
             // No hay nada que hacer, el objeto no es del tipo esperado
         }

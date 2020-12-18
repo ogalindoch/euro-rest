@@ -328,7 +328,7 @@ class restServer
                 // ok, sí existe, pero implementa la interfaz de modulos?
                 if( ($modInstance instanceof restModuleInterface) === false )
                 {
-                    throw new Exception("La clase {$modName} no implementa restModuleInterface, no la podemos usar.");
+                    throw new \Exception("La clase {$modName} no implementa restModuleInterface, no la podemos usar.");
                 }
 
                 // Carga los permisos del modulo
@@ -390,7 +390,7 @@ class restServer
                 {
                     $modInstance->cargaConfig($nombreDeSeccion, $this->config[$nombreDeSeccion] );
                 } else {
-                    throw new Exception("La seccion de configuración [{$nombreDeSeccion}] no existe");
+                    throw new \Exception("La seccion de configuración [{$nombreDeSeccion}] no existe");
                 }
             }
         } else {

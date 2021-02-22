@@ -107,6 +107,12 @@ class restServer
         // Inicializa el ruteador
         $this->router = new \AltoRouter();
 
+        if(!empty($this->config['BasePath']))
+        {
+            $this->router->setBasePath($this->config['BasePath']);
+        }
+
+
         /// Define parametros que se pueden aceptar
         {
             //Se agrego que pueda aceptar Variables

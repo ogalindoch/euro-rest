@@ -31,6 +31,8 @@ class restServer
 
     private $modoDebug = FALSE;
 
+    private $skipUserAuth = FALSE;
+
     // Este es un arreglo que normalmente debería estar vacio.
     // se usa para agregar rutas que temporalmente no verifican autorizacion, posiblemente en desarrollo
     private $testSkipAuth = array(
@@ -84,6 +86,12 @@ class restServer
             $this->modoDebug = TRUE;
         }
 
+        if( !empty( $this->config['SkipUserAuth']) && $this->config['SkipUserAuth'] )
+        {
+            error_log( "Validacion de User Auth desactivada (skipUserAuth)" );
+            $this->skipUserAuth = TRUE;
+        }
+
         if(!empty($this->config['ServerName']))
         {
             $this->ApiName = $this->config['ServerName'];
@@ -91,7 +99,11 @@ class restServer
 
         $this->cargaModulos();
 
-        if( empty($this->authHandler) )
+        // Si  
+        //     No tenemos un manejador de AUTH
+        //   y
+        //     No se definio que se debe ignorar la falta de Auth
+        if( empty($this->authHandler) && ($this->skipUserAuth == FALSE) )
         {
             http_response_code(500); // 500 Internal Server Error
             header('Access-Control-Allow-Origin: *');
@@ -308,7 +320,11 @@ class restServer
 
     public function SetSecret( $secret )
     {
-        $this->authHandler->SetSecret($secret);
+        // Podriamos no tener un authHandler
+        if( $this->authHandler != null )
+        {
+            $this->authHandler->SetSecret($secret);
+        }
     }
 
     private function cargaModulos()
@@ -443,7 +459,16 @@ class restServer
         die( json_encode($this->permisos,true) ); 
     }
     public function showAuthProvider() {
-        die( $this->authHandler->name() );
+        // Podriamos no tener un authHandler
+        if( $this->authHandler == null )
+        {
+            die( "None" );
+        }
+        else
+        {
+            die( $this->authHandler->name() );
+        }
+        
     }
     public function debugOn() { 
         if($this->modoDebug)

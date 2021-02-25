@@ -27,5 +27,5 @@ interface authInterface
      * 
      * (Usado para la encriptacion del Token)
      */
-    function setSecret( $newSecret );
+    function SetSecret( $newSecret );
 }

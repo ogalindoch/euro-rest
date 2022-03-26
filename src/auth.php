@@ -201,6 +201,7 @@ abstract class auth implements restModuleInterface , authInterface
         http_response_code(405); // 405 Method Not Allowed
         header('Access-Control-Allow-Origin: *');
         header('content-type: application/json');
+        header('Allow: OPTIONS, POST');
         die(json_encode( array(
             'codigo' => 405,
             'mensaje' => 'Metodo no permitido',

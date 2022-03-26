@@ -67,7 +67,7 @@ class restServer
             $configPath = 'servidor.ini';
         }
 
-        //print("Cargando configuración desde {$configPath}".PHP_EOL);
+        error_log("Cargando configuración desde {$configPath}");
         $this->config= parse_ini_file($configPath,true);
 
         // Guarda el path en la configuración misma
